@@ -44,6 +44,9 @@ func UpAll(db *sql.DB, dir string) error {
 		return err
 	}
 
+	// Ensure the version table exists
+	EnsureDBVersion(db)
+
 	applied := map[int64]bool{}
 
 	rows, err := db.Query(`SELECT version_id FROM ` + tableName + ` WHERE is_applied`)
