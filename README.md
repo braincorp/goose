@@ -225,7 +225,7 @@ package migrations
 import (
 	"database/sql"
 
-	"github.com/pressly/goose"
+	"github.com/braincorp/goose"
 )
 
 func init() {

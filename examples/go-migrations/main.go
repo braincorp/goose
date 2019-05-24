@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/pressly/goose"
+	"github.com/braincorp/goose"
 
 	_ "github.com/mattn/go-sqlite3"
 )

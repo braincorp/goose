@@ -37,6 +37,42 @@ func Up(db *sql.DB, dir string) error {
 	return UpTo(db, dir, maxVersion)
 }
 
+// UpAll applies all migrations, in order, if they have not been
+func UpAll(db *sql.DB, dir string) error {
+	migrations, err := CollectMigrations(dir, minVersion, maxVersion)
+	if err != nil {
+		return err
+	}
+
+	applied := map[int64]bool{}
+
+	rows, err := db.Query(`SELECT version_id FROM ` + tableName + ` WHERE is_applied`)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		var v int64
+		if err := rows.Scan(&v); err != nil {
+			return err
+		}
+		applied[v] = true
+	}
+
+	for _, next := range migrations {
+		// Already applied, so skip
+		if _, ok := applied[next.Version]; ok {
+			continue
+		}
+
+		if err = next.Up(db); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // UpByOne migrates up by a single version.
 func UpByOne(db *sql.DB, dir string) error {
 	migrations, err := CollectMigrations(dir, minVersion, maxVersion)
