@@ -148,27 +148,25 @@ func CollectMigrations(dirpath string, current, target int64) (Migrations, error
 
 	// restore legacy behavior: setting an empty string as dirpath in Up/Down
 	// will ignore collecting migrations
-	if dirpath == "" {
-		return migrations, nil
-	}
+	if dirpath != "" {
+		if _, err := os.Stat(dirpath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("%s directory does not exists", dirpath)
+		}
 
-	if _, err := os.Stat(dirpath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("%s directory does not exists", dirpath)
-	}
-
-	// SQL migration files.
-	sqlMigrationFiles, err := filepath.Glob(dirpath + "/**.sql")
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range sqlMigrationFiles {
-		v, err := NumericComponent(file)
+		// SQL migration files.
+		sqlMigrationFiles, err := filepath.Glob(dirpath + "/**.sql")
 		if err != nil {
 			return nil, err
 		}
-		if versionFilter(v, current, target) {
-			migration := &Migration{Version: v, Next: -1, Previous: -1, Source: file}
-			migrations = append(migrations, migration)
+		for _, file := range sqlMigrationFiles {
+			v, err := NumericComponent(file)
+			if err != nil {
+				return nil, err
+			}
+			if versionFilter(v, current, target) {
+				migration := &Migration{Version: v, Next: -1, Previous: -1, Source: file}
+				migrations = append(migrations, migration)
+			}
 		}
 	}
 
@@ -183,25 +181,27 @@ func CollectMigrations(dirpath string, current, target int64) (Migrations, error
 		}
 	}
 
-	// Go migration files
-	goMigrationFiles, err := filepath.Glob(dirpath + "/**.go")
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range goMigrationFiles {
-		v, err := NumericComponent(file)
+	if dirpath != "" {
+		// Go migration files
+		goMigrationFiles, err := filepath.Glob(dirpath + "/**.go")
 		if err != nil {
-			continue // Skip any files that don't have version prefix.
+			return nil, err
 		}
+		for _, file := range goMigrationFiles {
+			v, err := NumericComponent(file)
+			if err != nil {
+				continue // Skip any files that don't have version prefix.
+			}
 
-		// Skip migrations already existing migrations registered via goose.AddMigration().
-		if _, ok := registeredGoMigrations[v]; ok {
-			continue
-		}
+			// Skip migrations already existing migrations registered via goose.AddMigration().
+			if _, ok := registeredGoMigrations[v]; ok {
+				continue
+			}
 
-		if versionFilter(v, current, target) {
-			migration := &Migration{Version: v, Next: -1, Previous: -1, Source: file, Registered: false}
-			migrations = append(migrations, migration)
+			if versionFilter(v, current, target) {
+				migration := &Migration{Version: v, Next: -1, Previous: -1, Source: file, Registered: false}
+				migrations = append(migrations, migration)
+			}
 		}
 	}
 
